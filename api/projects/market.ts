@@ -1,0 +1,4 @@
+import type {IncomingMessage,ServerResponse} from 'node:http';
+import {ensureMethod,handleError,requireAuth,respond,store,HttpError} from '../_lib/admin';
+import {entitlement} from '../_lib/access';
+export default async function handler(req:IncomingMessage,res:ServerResponse){try{ensureMethod(req,'GET');const token=await requireAuth(req);if((await entitlement(token.uid))!=='GOLD')throw new HttpError(403,'Gold membership is required for the purchase catalogue.');const snap=await store().collection('projects').where('availableForPurchase','==',true).limit(70).get();const items=snap.docs.filter(d=>['BURIED','LOOKING_FOR_REVIVAL','UNDER_REVIVAL','REVIVED'].includes(d.data().status)).map(d=>({id:d.id,title:d.data().title,category:d.data().category,completionPercentage:d.data().completionPercentage}));respond(res,200,{items})}catch(e){handleError(res,e)}}

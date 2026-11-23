@@ -1,0 +1,5 @@
+import {getStorage,ref,uploadBytes,getBytes} from 'firebase/storage';
+import {auth,app} from '../lib/firebase';
+const MAX_SIZE=20*1024*1024;
+export async function uploadArchive(projectId:string,file:File){const uid=auth.currentUser?.uid;if(!uid)throw new Error('Sign in first.');if(file.size>MAX_SIZE)throw new Error('ZIP archive must not exceed 20 MB.');if(!file.name.toLowerCase().endsWith('.zip'))throw new Error('Only .zip files are accepted.');const path=`project-archives/${uid}/${projectId}/source.zip`;await uploadBytes(ref(getStorage(app),path),file,{contentType:'application/zip'});return path;}
+export async function downloadMyArchive(path:string){const uid=auth.currentUser?.uid;if(!uid||!path.startsWith(`project-archives/${uid}/`))throw new Error('Only the owner can download this private archive.');const bytes=await getBytes(ref(getStorage(app),path),MAX_SIZE+1);const url=URL.createObjectURL(new Blob([bytes],{type:'application/zip'}));const anchor=document.createElement('a');anchor.href=url;anchor.download='code-cemetery-project.zip';anchor.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}

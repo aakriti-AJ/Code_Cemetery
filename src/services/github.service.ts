@@ -1,0 +1,2 @@
+export interface GithubRepository {name:string;fullName:string;language:string|null;stars:number;forks:number;openIssues:number;updatedAt:string;htmlUrl:string;description:string|null}
+export async function getGithubRepository(url:string):Promise<GithubRepository>{const response=await fetch(`/api/github/repository?url=${encodeURIComponent(url)}`);const data=await response.json();if(!response.ok)throw new Error(data.error||'GitHub details unavailable.');return data as GithubRepository}

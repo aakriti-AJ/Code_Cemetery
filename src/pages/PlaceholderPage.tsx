@@ -1,0 +1,2 @@
+import {Link} from 'react-router';import Icon from '../components/Icon';
+export default function PlaceholderPage({title='Page not found',description='This page is not available.'}:{title?:string;description?:string}){return <div className="empty-state my-12"><span className="empty-icon"><Icon name="compass" size={28}/></span><h1 className="section-title">{title}</h1><p>{description}</p><Link to="/" className="btn btn-dark">Back to home <Icon name="arrow-right" size={16}/></Link></div>}

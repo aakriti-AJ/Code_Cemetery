@@ -1,0 +1,10 @@
+import {addDoc,collection,doc,getDocs,limit,orderBy,query,runTransaction,serverTimestamp,where} from 'firebase/firestore';
+import {auth,db} from '../lib/firebase';
+import type {ProjectComment,ProjectTask} from '../types/revival';
+function uid(){const id=auth.currentUser?.uid;if(!id)throw new Error('Sign in to contribute.');return id}
+export async function getComments(projectId:string){const snap=await getDocs(query(collection(db,'projects',projectId,'comments'),orderBy('createdAt','desc'),limit(50)));return snap.docs.map(d=>({...d.data(),id:d.id}) as ProjectComment)}
+export async function addComment(projectId:string,message:string,name:string){if(message.trim().length<2||message.trim().length>1500)throw new Error('Comment length must be 2–1500 characters.');await addDoc(collection(db,'projects',projectId,'comments'),{authorId:uid(),authorName:name.slice(0,80),message:message.trim(),createdAt:serverTimestamp()})}
+export async function getTasks(projectId:string){const snap=await getDocs(query(collection(db,'projects',projectId,'tasks'),orderBy('createdAt','desc'),limit(100)));return snap.docs.map(d=>({...d.data(),id:d.id}) as ProjectTask)}
+export async function addTask(projectId:string,title:string){if(title.trim().length<3||title.length>150)throw new Error('Task must be 3–150 characters.');await addDoc(collection(db,'projects',projectId,'tasks'),{title:title.trim(),completed:false,createdBy:uid(),createdAt:serverTimestamp(),updatedAt:serverTimestamp()})}
+export async function toggleTask(projectId:string,taskId:string,completed:boolean){const reference=doc(db,'projects',projectId,'tasks',taskId);await runTransaction(db,async t=>{const task=await t.get(reference);if(!task.exists())throw new Error('Task not found.');t.update(reference,{completed,updatedAt:serverTimestamp()})})}
+export async function isContributor(projectId:string){if(!auth.currentUser)return false;const snap=await getDocs(query(collection(db,'projects',projectId,'contributors'),where('userId','==',uid()),limit(1)));return !snap.empty}

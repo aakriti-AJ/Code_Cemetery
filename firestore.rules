@@ -1,0 +1,256 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function signedIn() { return request.auth != null; }
+  function isMe(id) { return signedIn() && request.auth.uid == id; }
+  function parent(id) { return get(/databases/$(database)/documents/projects/$(id)).data; }
+  function parentExists(id) { return exists(/databases/$(database)/documents/projects/$(id)); }
+  function publicStatus(status) { return status in ['BURIED','LOOKING_FOR_REVIVAL','UNDER_REVIVAL','REVIVED']; }
+  function editableStatus(status) { return status in ['DRAFT','BURIED','LOOKING_FOR_REVIVAL']; }
+  function premiumMember() { return signedIn() && exists(/databases/$(database)/documents/entitlements/$(request.auth.uid))
+    && get(/databases/$(database)/documents/entitlements/$(request.auth.uid)).data.tier in ['SILVER','GOLD']; }
+  function canReadParent(id) { return parentExists(id) && (isMe(parent(id).ownerId) || (publicStatus(parent(id).status) && (parent(id).completionPercentage < 80 || premiumMember()))); }
+  function canWork(id) { return signedIn() && parentExists(id) && (isMe(parent(id).ownerId) || exists(/databases/$(database)/documents/projects/$(id)/contributors/$(request.auth.uid))) && parent(id).status != 'REVIVED'; }
+
+  // Validate each indexed element: Firestore rules have no array-every iterator.
+  function textList(items, maxCount, maxLength) {
+   return items is list && items.size() <= maxCount &&
+      (items.size() <= 0 || (items[0] is string && items[0].size() >= 1 && items[0].size() <= maxLength)) &&
+      (items.size() <= 1 || (items[1] is string && items[1].size() >= 1 && items[1].size() <= maxLength)) &&
+      (items.size() <= 2 || (items[2] is string && items[2].size() >= 1 && items[2].size() <= maxLength)) &&
+      (items.size() <= 3 || (items[3] is string && items[3].size() >= 1 && items[3].size() <= maxLength)) &&
+      (items.size() <= 4 || (items[4] is string && items[4].size() >= 1 && items[4].size() <= maxLength)) &&
+      (items.size() <= 5 || (items[5] is string && items[5].size() >= 1 && items[5].size() <= maxLength)) &&
+      (items.size() <= 6 || (items[6] is string && items[6].size() >= 1 && items[6].size() <= maxLength)) &&
+      (items.size() <= 7 || (items[7] is string && items[7].size() >= 1 && items[7].size() <= maxLength)) &&
+      (items.size() <= 8 || (items[8] is string && items[8].size() >= 1 && items[8].size() <= maxLength)) &&
+      (items.size() <= 9 || (items[9] is string && items[9].size() >= 1 && items[9].size() <= maxLength)) &&
+      (items.size() <= 10 || (items[10] is string && items[10].size() >= 1 && items[10].size() <= maxLength)) &&
+      (items.size() <= 11 || (items[11] is string && items[11].size() >= 1 && items[11].size() <= maxLength)) &&
+      (items.size() <= 12 || (items[12] is string && items[12].size() >= 1 && items[12].size() <= maxLength)) &&
+      (items.size() <= 13 || (items[13] is string && items[13].size() >= 1 && items[13].size() <= maxLength)) &&
+      (items.size() <= 14 || (items[14] is string && items[14].size() >= 1 && items[14].size() <= maxLength)) &&
+      (items.size() <= 15 || (items[15] is string && items[15].size() >= 1 && items[15].size() <= maxLength)) &&
+      (items.size() <= 16 || (items[16] is string && items[16].size() >= 1 && items[16].size() <= maxLength)) &&
+      (items.size() <= 17 || (items[17] is string && items[17].size() >= 1 && items[17].size() <= maxLength)) &&
+      (items.size() <= 18 || (items[18] is string && items[18].size() >= 1 && items[18].size() <= maxLength)) &&
+      (items.size() <= 19 || (items[19] is string && items[19].size() >= 1 && items[19].size() <= maxLength)) &&
+      (items.size() <= 20 || (items[20] is string && items[20].size() >= 1 && items[20].size() <= maxLength)) &&
+      (items.size() <= 21 || (items[21] is string && items[21].size() >= 1 && items[21].size() <= maxLength)) &&
+      (items.size() <= 22 || (items[22] is string && items[22].size() >= 1 && items[22].size() <= maxLength)) &&
+      (items.size() <= 23 || (items[23] is string && items[23].size() >= 1 && items[23].size() <= maxLength)) &&
+      (items.size() <= 24 || (items[24] is string && items[24].size() >= 1 && items[24].size() <= maxLength)) &&
+      (items.size() <= 25 || (items[25] is string && items[25].size() >= 1 && items[25].size() <= maxLength)) &&
+      (items.size() <= 26 || (items[26] is string && items[26].size() >= 1 && items[26].size() <= maxLength)) &&
+      (items.size() <= 27 || (items[27] is string && items[27].size() >= 1 && items[27].size() <= maxLength)) &&
+      (items.size() <= 28 || (items[28] is string && items[28].size() >= 1 && items[28].size() <= maxLength)) &&
+      (items.size() <= 29 || (items[29] is string && items[29].size() >= 1 && items[29].size() <= maxLength));
+  }
+
+  function validUser() {
+   let d=request.resource.data;
+   return d.keys().hasAll(['uid','name','username','email','githubUsername','bio','skills','createdAt','updatedAt'])
+    && d.keys().hasOnly(['uid','name','username','email','githubUsername','githubAutoImport','bio','skills','createdAt','updatedAt'])
+    && d.uid is string && d.name is string && d.name.size() >= 2 && d.name.size() <= 80
+    && d.username is string && d.username.matches('^[a-z0-9_]{3,20}$')
+    && (!('githubAutoImport' in d) || d.githubAutoImport is bool)
+    && d.email is string && d.githubUsername is string && d.githubUsername.size() <= 39
+    && d.bio is string && d.bio.size() <= 1000 && textList(d.skills,30,60)
+    && d.createdAt is timestamp && d.updatedAt is timestamp;
+  }
+  // Public profiles intentionally exclude private email and authentication data.
+  match /publicProfiles/{uid} {
+   allow get,list: if true;
+   allow create,update: if isMe(uid)
+     && request.resource.data.keys().hasOnly(['uid','name','username','bio','skills','githubUsername','updatedAt'])
+     && request.resource.data.keys().hasAll(['uid','name','username','bio','skills','githubUsername','updatedAt'])
+     && request.resource.data.uid == uid && request.resource.data.name is string && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 80
+     && request.resource.data.username is string && request.resource.data.username.matches('^[a-z0-9_]{3,20}$')
+     && request.resource.data.bio is string && request.resource.data.bio.size() <= 1000
+     && request.resource.data.githubUsername is string && request.resource.data.githubUsername.size() <= 39
+     && textList(request.resource.data.skills,30,60) && request.resource.data.updatedAt == request.time;
+   allow delete: if false;
+  }
+  match /follows/{followId} {
+   allow get,list: if true;
+   allow create: if signedIn() && request.resource.data.keys().hasOnly(['followerId','targetId','createdAt'])
+      && request.resource.data.keys().hasAll(['followerId','targetId','createdAt'])
+      && request.resource.data.followerId == request.auth.uid && request.resource.data.targetId is string
+      && request.resource.data.targetId != request.auth.uid
+      && followId == request.auth.uid + '_' + request.resource.data.targetId
+      && exists(/databases/$(database)/documents/publicProfiles/$(request.resource.data.targetId))
+      && request.resource.data.createdAt == request.time;
+   allow delete: if signedIn() && resource.data.followerId == request.auth.uid;
+   allow update: if false;
+  }
+  match /entitlements/{uid} {
+   allow get: if isMe(uid);allow list,create,update,delete: if false;
+  }
+  match /moderation/{uid} {allow read,write: if false;}
+  match /reports/{reportId} {
+   allow create: if signedIn() && request.resource.data.keys().hasOnly(['reporterId','targetId','reason','details','createdAt'])
+      && request.resource.data.keys().hasAll(['reporterId','targetId','reason','details','createdAt'])
+      && reportId == request.auth.uid + '_' + request.resource.data.targetId
+      && request.resource.data.reporterId == request.auth.uid && request.resource.data.targetId is string && request.resource.data.targetId.size() >= 8 && request.resource.data.targetId.size() <= 128 && request.resource.data.targetId != request.auth.uid
+      && exists(/databases/$(database)/documents/publicProfiles/$(request.resource.data.targetId))
+      && request.resource.data.reason in ['SPAM','HARASSMENT','IMPERSONATION','SCAM','OTHER']
+      && request.resource.data.details is string && request.resource.data.details.size() <= 700
+      && request.resource.data.createdAt == request.time;
+   allow get,list,update,delete: if false;
+  }
+  match /newsletterSubmissions/{id} {
+   allow get,list,update,delete: if false;
+   allow create: if signedIn() && request.resource.data.keys().hasAll(['authorId','title','summary','body','status','createdAt'])
+      && request.resource.data.keys().hasOnly(['authorId','title','summary','body','status','createdAt'])
+      && request.resource.data.authorId == request.auth.uid && request.resource.data.status == 'PENDING'
+      && request.resource.data.title is string && request.resource.data.title.size() >= 8 && request.resource.data.title.size() <= 120
+      && request.resource.data.summary is string && request.resource.data.summary.size() >= 20 && request.resource.data.summary.size() <= 280
+      && request.resource.data.body is string && request.resource.data.body.size() >= 100 && request.resource.data.body.size() <= 9000
+      && request.resource.data.createdAt == request.time;
+  }
+  match /newsletters/{id} {allow get,list: if true;allow write: if false;}
+  match /projectMetrics/{id} {allow read,write: if false;}
+  match /metricEvents/{id} {allow read,write: if false;}
+  match /users/{userId} {
+   allow get: if isMe(userId);
+   allow list: if false;
+   allow create: if isMe(userId) && validUser() && request.resource.data.uid == userId
+    && request.resource.data.email == request.auth.token.email
+    && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
+   allow update: if isMe(userId) && validUser() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','username','githubUsername','githubAutoImport','bio','skills','updatedAt'])
+    && request.resource.data.updatedAt == request.time;
+   allow delete: if false;
+   match /bookmarks/{projectId} {
+    allow get, list: if isMe(userId);
+    allow create: if isMe(userId) && request.resource.data.keys().hasOnly(['projectId','createdAt'])
+     && request.resource.data.keys().hasAll(['projectId','createdAt'])
+     && request.resource.data.projectId == projectId && request.resource.data.createdAt == request.time
+     && parentExists(projectId) && publicStatus(parent(projectId).status);
+    allow delete: if isMe(userId);
+    allow update: if false;
+   }
+  }
+
+  function validProject() {
+   let d=request.resource.data;
+   return d.keys().hasAll(['title','description','githubUrl','technologies','category','completionPercentage','causeOfAbandonment','workingFeatures','incompleteFeatures','knownIssues','requiredSkills','status','ownerId','createdAt','updatedAt'])
+    && d.keys().hasOnly(['title','description','githubUrl','sourceType','archivePath','availableForPurchase','technologies','category','completionPercentage','causeOfAbandonment','workingFeatures','incompleteFeatures','knownIssues','requiredSkills','status','ownerId','createdAt','updatedAt'])
+    && d.title is string && d.title.size() >= 3 && d.title.size() <= 100
+    && d.description is string && d.description.size() >= 15 && d.description.size() <= 4000
+    && d.githubUrl is string && (d.githubUrl == '' || d.githubUrl.matches('^https://github[.]com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/?$'))
+    && (!('sourceType' in d) || (d.sourceType in ['GITHUB','CUSTOM'] && (d.sourceType == 'CUSTOM' || d.githubUrl != '')))
+    && (!('archivePath' in d) || (d.archivePath is string && d.archivePath.size() <= 320))
+    && (!('availableForPurchase' in d) || d.availableForPurchase is bool)
+    && d.category is string && d.category.size() >= 2 && d.category.size() <= 60
+    && d.completionPercentage is int && d.completionPercentage >= 0 && d.completionPercentage <= 100
+    && d.causeOfAbandonment is string && d.causeOfAbandonment.size() >= 10 && d.causeOfAbandonment.size() <= 2000
+    && textList(d.technologies,20,60) && d.technologies.size() >= 1
+    && textList(d.workingFeatures,30,300) && textList(d.incompleteFeatures,30,300)
+    && textList(d.knownIssues,30,300) && textList(d.requiredSkills,30,300)
+    && d.ownerId is string && d.createdAt is timestamp && d.updatedAt is timestamp;
+  }
+  // Imported GitHub drafts may have been written by the Admin SDK under an older
+  // schema. On edit, validate every *changed* client-writable field without
+  // requiring unrelated, untouched legacy fields to satisfy the create schema.
+  // Ownership, immutable metadata, supported statuses and server timestamps
+  // remain mandatory. Clients cannot add unknown keys or remove existing keys.
+  function validProjectUpdate() {
+   let d = request.resource.data;
+   let changed = d.diff(resource.data).affectedKeys();
+   return d.keys().hasAll(['ownerId','createdAt','status','updatedAt'])
+    && d.diff(resource.data).removedKeys().size() == 0
+    && changed.hasOnly(['title','description','githubUrl','sourceType','archivePath','availableForPurchase','technologies','category','completionPercentage','causeOfAbandonment','workingFeatures','incompleteFeatures','knownIssues','requiredSkills','status','updatedAt'])
+    && d.ownerId == resource.data.ownerId && d.createdAt == resource.data.createdAt
+    && d.ownerId is string && d.createdAt is timestamp
+    && d.updatedAt is timestamp && d.updatedAt == request.time
+    && editableStatus(d.status)
+    && (!changed.hasAny(['title']) || (d.title is string && d.title.size() >= 3 && d.title.size() <= 100))
+    && (!changed.hasAny(['description']) || (d.description is string && d.description.size() >= 15 && d.description.size() <= 4000))
+    && (!changed.hasAny(['githubUrl']) || (d.githubUrl is string && (d.githubUrl == '' || d.githubUrl.matches('^https://github[.]com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/?$'))))
+    && (!changed.hasAny(['sourceType','githubUrl']) || !('sourceType' in d) || (d.sourceType in ['GITHUB','CUSTOM'] && (d.sourceType == 'CUSTOM' || d.githubUrl != '')))
+    && (!changed.hasAny(['archivePath']) || (d.archivePath is string && d.archivePath.size() <= 320))
+    && (!changed.hasAny(['availableForPurchase']) || d.availableForPurchase is bool)
+    && (!changed.hasAny(['technologies']) || (textList(d.technologies,20,60) && d.technologies.size() >= 1))
+    && (!changed.hasAny(['category']) || (d.category is string && d.category.size() >= 2 && d.category.size() <= 60))
+    && (!changed.hasAny(['completionPercentage']) || (d.completionPercentage is int && d.completionPercentage >= 0 && d.completionPercentage <= 100))
+    && (!changed.hasAny(['causeOfAbandonment']) || (d.causeOfAbandonment is string && d.causeOfAbandonment.size() >= 10 && d.causeOfAbandonment.size() <= 2000))
+    && (!changed.hasAny(['workingFeatures']) || textList(d.workingFeatures,30,300))
+    && (!changed.hasAny(['incompleteFeatures']) || textList(d.incompleteFeatures,30,300))
+    && (!changed.hasAny(['knownIssues']) || textList(d.knownIssues,30,300))
+    && (!changed.hasAny(['requiredSkills']) || textList(d.requiredSkills,30,300));
+  }
+
+  match /projects/{projectId} {
+   allow get: if (signedIn() && resource.data.ownerId == request.auth.uid)
+     || (publicStatus(resource.data.status) && (resource.data.completionPercentage < 80 || premiumMember()));
+   // The public listing uses the API to return safe previews; owners can still query their own projects.
+   allow list: if signedIn() && resource.data.ownerId == request.auth.uid;
+   allow create: if signedIn() && validProject() && editableStatus(request.resource.data.status)
+    && request.resource.data.ownerId == request.auth.uid
+    && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
+   allow update: if signedIn() && resource.data.ownerId == request.auth.uid && editableStatus(resource.data.status)
+    && validProjectUpdate();
+   allow delete: if false;
+
+   match /postmortem/{entryId} {
+    function validPostmortem() {
+     let d=request.resource.data;
+     return d.keys().hasOnly(['technicalChallenges','lessonsLearned','recommendedNextSteps','createdAt','updatedAt'])
+      && d.keys().hasAll(['technicalChallenges','lessonsLearned','recommendedNextSteps','createdAt','updatedAt'])
+      && d.technicalChallenges is string && d.technicalChallenges.size() >= 15 && d.technicalChallenges.size() <= 2500
+      && d.lessonsLearned is string && d.lessonsLearned.size() >= 15 && d.lessonsLearned.size() <= 2500
+      && d.recommendedNextSteps is string && d.recommendedNextSteps.size() >= 15 && d.recommendedNextSteps.size() <= 2500
+      && d.createdAt is timestamp && d.updatedAt is timestamp;
+    }
+    allow get: if entryId == 'summary' && canReadParent(projectId);
+    allow list: if false;
+    allow create: if entryId == 'summary' && parentExists(projectId) && isMe(parent(projectId).ownerId)
+     && editableStatus(parent(projectId).status) && validPostmortem()
+     && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
+    allow update: if entryId == 'summary' && parentExists(projectId) && isMe(parent(projectId).ownerId)
+     && editableStatus(parent(projectId).status) && validPostmortem()
+     && request.resource.data.createdAt == resource.data.createdAt && request.resource.data.updatedAt == request.time;
+    allow delete: if false;
+   }
+   match /contributors/{userId} {
+    allow get,list: if canReadParent(projectId);
+    allow create,update,delete: if false; // Only verified Admin SDK function.
+   }
+   match /tasks/{taskId} {
+    allow get,list: if canReadParent(projectId);
+    allow create: if canWork(projectId) && request.resource.data.keys().hasOnly(['title','completed','createdBy','createdAt','updatedAt'])
+     && request.resource.data.keys().hasAll(['title','completed','createdBy','createdAt','updatedAt'])
+     && request.resource.data.title is string && request.resource.data.title.size() >= 3 && request.resource.data.title.size() <= 150
+     && request.resource.data.createdBy == request.auth.uid && request.resource.data.completed == false
+     && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
+    allow update: if canWork(projectId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['completed','updatedAt'])
+     && request.resource.data.completed is bool && request.resource.data.updatedAt == request.time;
+    allow delete: if false;
+   }
+   match /comments/{commentId} {
+    allow get,list: if canReadParent(projectId);
+    allow create: if signedIn() && parentExists(projectId) && publicStatus(parent(projectId).status)
+     && request.resource.data.keys().hasAll(['authorId','authorName','message','createdAt'])
+     && request.resource.data.keys().hasOnly(['authorId','authorName','message','createdAt'])
+     && request.resource.data.authorId == request.auth.uid
+     && request.resource.data.authorName is string && request.resource.data.authorName.size() <= 80
+     && request.resource.data.message is string && request.resource.data.message.size() >= 2 && request.resource.data.message.size() <= 1500
+     && request.resource.data.createdAt == request.time;
+    allow update,delete: if false;
+   }
+  }
+
+  match /revivalProposals/{proposalId} {
+   allow get: if signedIn() && (proposalId.matches('^.+_' + request.auth.uid + '$') || resource.data.ownerId == request.auth.uid);
+   allow list: if signedIn() && (resource.data.ownerId == request.auth.uid || resource.data.applicantId == request.auth.uid);
+   allow create,update,delete: if false; // Vercel API + Firebase Admin only.
+  }
+  match /notifications/{notificationId} {
+   allow get,list: if signedIn() && resource.data.userId == request.auth.uid;
+   allow update: if signedIn() && resource.data.userId == request.auth.uid
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+    && request.resource.data.read == true;
+   allow create,delete: if false;
+  }
+ }
+}

@@ -1,0 +1,5 @@
+import {auth,db} from '../lib/firebase';
+import {addDoc,collection,getDocs,limit,orderBy,query,serverTimestamp} from 'firebase/firestore';
+export interface Newsletter {id:string;title:string;summary:string;body:string;authorName:string;publishedAt:{seconds:number}|null;}
+export async function listPublishedNewsletters(){const ss=await getDocs(query(collection(db,'newsletters'),orderBy('publishedAt','desc'),limit(30)));return ss.docs.map(d=>({id:d.id,...d.data()} as Newsletter))}
+export async function submitNewsletter(data:{title:string;summary:string;body:string}){const user=auth.currentUser;if(!user)throw new Error('Sign in to propose a newsletter.');const title=data.title.trim(),summary=data.summary.trim(),body=data.body.trim();if(title.length<8||title.length>120||summary.length<20||summary.length>280||body.length<100||body.length>9000)throw new Error('Use a title (8–120), summary (20–280), and article (100–9000 characters).');await addDoc(collection(db,'newsletterSubmissions'),{authorId:user.uid,title,summary,body,status:'PENDING',createdAt:serverTimestamp()})}
