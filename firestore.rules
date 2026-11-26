@@ -149,37 +149,6 @@ service cloud.firestore {
     && textList(d.knownIssues,30,300) && textList(d.requiredSkills,30,300)
     && d.ownerId is string && d.createdAt is timestamp && d.updatedAt is timestamp;
   }
-  // Imported GitHub drafts may have been written by the Admin SDK under an older
-  // schema. On edit, validate every *changed* client-writable field without
-  // requiring unrelated, untouched legacy fields to satisfy the create schema.
-  // Ownership, immutable metadata, supported statuses and server timestamps
-  // remain mandatory. Clients cannot add unknown keys or remove existing keys.
-  function validProjectUpdate() {
-   let d = request.resource.data;
-   let changed = d.diff(resource.data).affectedKeys();
-   return d.keys().hasAll(['ownerId','createdAt','status','updatedAt'])
-    && d.diff(resource.data).removedKeys().size() == 0
-    && changed.hasOnly(['title','description','githubUrl','sourceType','archivePath','availableForPurchase','technologies','category','completionPercentage','causeOfAbandonment','workingFeatures','incompleteFeatures','knownIssues','requiredSkills','status','updatedAt'])
-    && d.ownerId == resource.data.ownerId && d.createdAt == resource.data.createdAt
-    && d.ownerId is string && d.createdAt is timestamp
-    && d.updatedAt is timestamp && d.updatedAt == request.time
-    && editableStatus(d.status)
-    && (!changed.hasAny(['title']) || (d.title is string && d.title.size() >= 3 && d.title.size() <= 100))
-    && (!changed.hasAny(['description']) || (d.description is string && d.description.size() >= 15 && d.description.size() <= 4000))
-    && (!changed.hasAny(['githubUrl']) || (d.githubUrl is string && (d.githubUrl == '' || d.githubUrl.matches('^https://github[.]com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/?$'))))
-    && (!changed.hasAny(['sourceType','githubUrl']) || !('sourceType' in d) || (d.sourceType in ['GITHUB','CUSTOM'] && (d.sourceType == 'CUSTOM' || d.githubUrl != '')))
-    && (!changed.hasAny(['archivePath']) || (d.archivePath is string && d.archivePath.size() <= 320))
-    && (!changed.hasAny(['availableForPurchase']) || d.availableForPurchase is bool)
-    && (!changed.hasAny(['technologies']) || (textList(d.technologies,20,60) && d.technologies.size() >= 1))
-    && (!changed.hasAny(['category']) || (d.category is string && d.category.size() >= 2 && d.category.size() <= 60))
-    && (!changed.hasAny(['completionPercentage']) || (d.completionPercentage is int && d.completionPercentage >= 0 && d.completionPercentage <= 100))
-    && (!changed.hasAny(['causeOfAbandonment']) || (d.causeOfAbandonment is string && d.causeOfAbandonment.size() >= 10 && d.causeOfAbandonment.size() <= 2000))
-    && (!changed.hasAny(['workingFeatures']) || textList(d.workingFeatures,30,300))
-    && (!changed.hasAny(['incompleteFeatures']) || textList(d.incompleteFeatures,30,300))
-    && (!changed.hasAny(['knownIssues']) || textList(d.knownIssues,30,300))
-    && (!changed.hasAny(['requiredSkills']) || textList(d.requiredSkills,30,300));
-  }
-
   match /projects/{projectId} {
    allow get: if (signedIn() && resource.data.ownerId == request.auth.uid)
      || (publicStatus(resource.data.status) && (resource.data.completionPercentage < 80 || premiumMember()));
@@ -189,7 +158,9 @@ service cloud.firestore {
     && request.resource.data.ownerId == request.auth.uid
     && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
    allow update: if signedIn() && resource.data.ownerId == request.auth.uid && editableStatus(resource.data.status)
-    && validProjectUpdate();
+    && validProject() && editableStatus(request.resource.data.status)
+    && request.resource.data.ownerId == resource.data.ownerId && request.resource.data.createdAt == resource.data.createdAt
+    && request.resource.data.updatedAt == request.time;
    allow delete: if false;
 
    match /postmortem/{entryId} {
