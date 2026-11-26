@@ -1,4 +1,4 @@
 import type {IncomingMessage,ServerResponse} from 'node:http';
-import {ensureMethod,handleError,respond,store,HttpError} from '../_lib/admin';
-import {entitlement,maybeIdentity,projectUnlocked,publicPreview} from '../_lib/access';
+import {ensureMethod,handleError,respond,store,HttpError} from '../_lib/admin.js';
+import {entitlement,maybeIdentity,projectUnlocked,publicPreview} from '../_lib/access.js';
 export default async function handler(req:IncomingMessage,res:ServerResponse){try{ensureMethod(req,'GET');const url=new URL(req.url||'/',`https://${req.headers.host||'localhost'}`);const id=url.searchParams.get('id')||'';if(!/^[A-Za-z0-9_-]{8,160}$/.test(id))throw new HttpError(400,'Invalid tombstone ID.');const doc=await store().doc(`projects/${id}`).get();if(!doc.exists)throw new HttpError(404,'Tombstone not found.');const project=doc.data()!;const token=await maybeIdentity(req),uid=token?.uid;if(project.ownerId!==uid&&!['BURIED','LOOKING_FOR_REVIVAL','UNDER_REVIVAL','REVIVED'].includes(project.status))throw new HttpError(404,'Tombstone not found.');const tier=await entitlement(uid);const locked=!projectUnlocked(project,uid,tier);respond(res,200,publicPreview(project,id,locked))}catch(e){handleError(res,e)}}

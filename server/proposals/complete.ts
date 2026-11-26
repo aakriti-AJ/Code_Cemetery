@@ -1,5 +1,5 @@
 import type {IncomingMessage,ServerResponse} from 'node:http';
 import {z} from 'zod';
-import {FieldValue,handleError,ensureMethod,HttpError,readBody,requireAuth,respond,store} from '../_lib/admin';
+import {FieldValue,handleError,ensureMethod,HttpError,readBody,requireAuth,respond,store} from '../_lib/admin.js';
 const schema=z.object({projectId:z.string().regex(/^[A-Za-z0-9_-]{1,128}$/)});
 export default async function handler(req:IncomingMessage,res:ServerResponse){try{ensureMethod(req,'POST');const token=await requireAuth(req);const {projectId}=schema.parse(await readBody(req));const db=store();const ref=db.collection('projects').doc(projectId);await db.runTransaction(async tx=>{const snap=await tx.get(ref);if(!snap.exists)throw new HttpError(404,'Project not found.');const p=snap.data();if(p?.ownerId!==token.uid)throw new HttpError(403,'Only the owner can complete the revival.');if(p.status!=='UNDER_REVIVAL')throw new HttpError(409,'Project is not currently under revival.');tx.update(ref,{status:'REVIVED',completionPercentage:100,updatedAt:FieldValue.serverTimestamp()})});respond(res,200,{success:true})}catch(e){if(e instanceof z.ZodError)respond(res,400,{error:'Invalid project.'});else handleError(res,e)}}

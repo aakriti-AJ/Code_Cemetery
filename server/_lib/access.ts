@@ -1,4 +1,4 @@
-import {requireAuth,store} from './admin';
+import {requireAuth,store} from './admin.js';
 import type {IncomingMessage} from 'node:http';
 export async function maybeIdentity(req:IncomingMessage){if(!(req.headers.authorization||'').startsWith('Bearer '))return null;try{return await requireAuth(req)}catch{return null}}
 export async function entitlement(uid:string|undefined){if(!uid)return 'NONE';const doc=await store().doc(`entitlements/${uid}`).get();return String(doc.data()?.tier||'NONE')}

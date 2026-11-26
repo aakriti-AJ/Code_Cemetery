@@ -1,6 +1,6 @@
 import type {IncomingMessage,ServerResponse} from 'node:http';
-import {ensureMethod,handleError,respond,store,HttpError} from '../_lib/admin';
-import {entitlement,maybeIdentity,projectUnlocked} from '../_lib/access';
+import {ensureMethod,handleError,respond,store,HttpError} from '../_lib/admin.js';
+import {entitlement,maybeIdentity,projectUnlocked} from '../_lib/access.js';
 /** Deterministic, explainable scoring works entirely without an AI provider. */
 export function calculateScore(p:Record<string,unknown>,stats:{impressions:number;clicks:number}){
  const progress=Number(p.completionPercentage||0);const text=String(p.causeOfAbandonment||'');const completed=Array.isArray(p.workingFeatures)?p.workingFeatures.length:0;const issues=Array.isArray(p.knownIssues)?p.knownIssues.length:0;const missing=Array.isArray(p.incompleteFeatures)?p.incompleteFeatures.length:0;const skills=Array.isArray(p.requiredSkills)?p.requiredSkills.length:0;const tech=Array.isArray(p.technologies)?p.technologies.length:0;

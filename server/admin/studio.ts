@@ -1,5 +1,5 @@
 import type {IncomingMessage,ServerResponse} from 'node:http';
-import {ensureMethod,handleError,readBody,requireAuth,respond,store,FieldValue,HttpError} from '../_lib/admin';
+import {ensureMethod,handleError,readBody,requireAuth,respond,store,FieldValue,HttpError} from '../_lib/admin.js';
 import type {DecodedIdToken} from 'firebase-admin/auth';
 function isAdmin(t:DecodedIdToken){return t.admin===true||(process.env.ADMIN_UIDS||'').split(',').map(x=>x.trim()).filter(Boolean).includes(t.uid)}
 async function requireAdmin(req:IncomingMessage){const token=await requireAuth(req);if(!isAdmin(token))throw new HttpError(403,'This area is for administrators only.');return token}
